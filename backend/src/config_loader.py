@@ -115,10 +115,10 @@ class ProjectConfig:
         with open(path, 'r', encoding='utf-8') as f:
             return set(line.strip() for line in f if line.strip())
 
-    def get_openai_api_key(self):
-        key = os.getenv("OPENAI_API_TOKEN")
+    def get_hf_token(self):
+        key = os.getenv("HF_TOKEN")
         if not key:
-            raise ValueError("OPENAI_API_TOKEN not found in .env file.")
+            raise ValueError("HF_TOKEN not found in .env file.")
         return key
 
 # ===========================

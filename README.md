@@ -1,26 +1,26 @@
-# RAG with OpenAI and FAISS
+# MedGemma Medical Assistant
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3.x-black?style=for-the-badge&logo=flask&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-green?style=for-the-badge&logo=openai&logoColor=white)
+![HuggingFace](https://img.shields.io/badge/HuggingFace-MedGemma-yellow?style=for-the-badge&logo=huggingface&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![FAISS](https://img.shields.io/badge/FAISS-Vector_DB-orange?style=for-the-badge&logo=meta&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Zemberek-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-npm-339933?style=for-the-badge&logo=node.js&logoColor=white)
 
-A medical symptom analysis application using Retrieval-Augmented Generation (RAG) with OpenAI and FAISS vector database. The system processes Turkish language symptoms using Zemberek NLP and provides medical recommendations.
+A medical symptom analysis application powered by **Google MedGemma** via the HuggingFace Inference API, combined with a FAISS vector database for Turkish disease data retrieval. The system processes Turkish language symptoms using Zemberek NLP and provides medical recommendations.
 
 ## Screenshots and User Interface Guide
 
 ### Introduction
 
-The RAG Tıbbi Asistan (Medical Assistant) System provides a comprehensive interface for both patients and medical professionals. The system allows patients to describe their symptoms and get intelligent department recommendations, while doctors can review patient information, AI-generated insights, and detailed diagnostic analysis.
+The MedGemma Tıbbi Asistan (Medical Assistant) System provides a comprehensive interface for both patients and medical professionals. The system allows patients to describe their symptoms and get intelligent department recommendations, while doctors can review patient information, AI-generated insights, and detailed diagnostic analysis.
 
 ### Main Landing Page
 
 ![Landing Page](images/landing-page.png)
 
-When users first access the application, they encounter the main interface titled "RAG Tıbbi Asistan Sistemi" (RAG Medical Assistant System). Here, users must choose their role in the system - either as a **Hasta** (Patient) or **Doktor** (Doctor). This role selection determines the workflow and features available to the user.
+When users first access the application, they encounter the main interface titled "MedGemma Tıbbi Asistan Sistemi" (MedGemma Medical Assistant System). Here, users must choose their role in the system - either as a **Hasta** (Patient) or **Doktor** (Doctor). This role selection determines the workflow and features available to the user.
 
 ---
 
@@ -48,7 +48,7 @@ This screenshot shows an example of a patient entering their symptoms. In this c
 
 ![Loading Bar After Sending](images/loading-bar-after-sending.png)
 
-Immediately after clicking the send button, patients see a loading indicator. During this phase, the RAG system is processing the initial symptom description, performing semantic analysis, and preparing relevant follow-up questions to better understand the patient's condition.
+Immediately after clicking the send button, patients see a loading indicator. During this phase, the MedGemma system is processing the initial symptom description, performing semantic analysis, and preparing relevant follow-up questions to better understand the patient's condition.
 
 ### 5. Follow-up Questions
 
@@ -60,13 +60,13 @@ The system presents patients with additional questions to gather more specific i
 
 ![Loading Bar After Questions](images/loading-bar-after-questions.png)
 
-After answering the follow-up questions, patients see another loading indicator. At this stage, the RAG system is performing comprehensive analysis by combining all the patient's inputs and answers, calculating similarity scores using the FAISS vector database, applying hybrid scoring algorithms (70% semantic similarity + 30% token overlap), and determining the most appropriate medical department for the patient's condition.
+After answering the follow-up questions, patients see another loading indicator. At this stage, the MedGemma system is performing comprehensive analysis by combining all the patient's inputs and answers, calculating similarity scores using the FAISS vector database, applying hybrid scoring algorithms (70% semantic similarity + 30% token overlap), and determining the most appropriate medical department for the patient's condition.
 
 ### 7. Department Recommendation
 
 ![Department Navigation](images/department-navigation.png)
 
-The final step displays the system's recommendation. Based on all the information gathered and analyzed through the RAG pipeline, the patient is directed to the appropriate medical department. The interface shows "Yönlendirildiğiniz bölüm:" (The department you are being directed to:) followed by the recommended department, such as "Nöroloji" (Neurology) in this example. This recommendation is generated by the intelligent combination of vector similarity search, hybrid scoring, and LLM-based reasoning.
+The final step displays the system's recommendation. Based on all the information gathered and analyzed through the RAG pipeline, the patient is directed to the appropriate medical department. The interface shows "Yönlendirildiğiniz bölüm:" (The department you are being directed to:) followed by the recommended department, such as "Nöroloji" (Neurology) in this example. This recommendation is generated by the intelligent combination of vector similarity search, hybrid scoring, and MedGemma-based medical reasoning.
 
 ---
 
@@ -123,7 +123,7 @@ This provides doctors with a data-driven view of the most probable diagnoses bas
 
 ![Doctor Side Patient Detail 4](images/doctor-side-patient-detail-4.png)
 
-Since the system has comprehensive knowledge of the patient's symptoms and the detected diseases through hybrid scoring and vector similarity search, the LLM (GPT-4) generates a detailed, human-readable explanation (Açıklama) for the doctor. This narrative output includes:
+Since the system has comprehensive knowledge of the patient's symptoms and the detected diseases through hybrid scoring and vector similarity search, MedGemma generates a detailed, human-readable explanation (Açıklama) for the doctor. This narrative output includes:
 - Clinical interpretation of the symptoms
 - Reasoning behind the department recommendation
 - Potential diagnostic considerations
@@ -184,7 +184,7 @@ cp .env.example .env
 ```
 
 Then fill in the required values:
-- `OPENAI_API_TOKEN` - Your OpenAI API key
+- `HF_TOKEN` - Your HuggingFace access token (requires accepting [MedGemma terms](https://huggingface.co/collections/google/medgemma-release) on HuggingFace)
 
 ## Running the Project
 
@@ -249,9 +249,9 @@ npm start
 │   ├── data/            # Backend data storage
 │   │   └── vector/      # Vector database storage
 │   │       └── disease_faiss.index  # FAISS index file
-│   └── src/             # Source code for RAG and web app
+│   └── src/             # Source code for MedGemma and web app
 │       ├── config_loader.py      # Configuration loader
-│       ├── rag_openai.py         # RAG implementation with OpenAI
+│       ├── medgemma.py           # MedGemma implementation with HuggingFace
 │       ├── web_app.py            # Flask web application
 │       └── zemberek_client.py    # Zemberek NLP client
 ├── data/                # Original dataset files
@@ -283,8 +283,8 @@ npm start
 
 ### Backend
 - **Python 3.13.1** - Core programming language
-- **OpenAI GPT-4** - Large Language Model for medical analysis and response generation
-- **FAISS (Facebook AI Similarity Search)** - High-performance vector database for semantic similarity search
+- **Google MedGemma 4B Instruct** (`google/medgemma-4b-it`) - Medical Large Language Model via HuggingFace Inference API for symptom analysis and response generation
+- **FAISS (Facebook AI Similarity Search)** - High-performance vector database for semantic similarity search over the Turkish disease database
 - **Sentence Transformers** - `intfloat/multilingual-e5-base` model for generating text embeddings
 - **Zemberek NLP** - Turkish language processing (lemmatization, morphological analysis)
 - **Flask** - Web framework for REST API
@@ -305,7 +305,7 @@ npm start
 - **Custom Hybrid Scoring** - 70% semantic similarity + 30% token overlap for retrieval optimization
 
 ### Architecture
-- **RAG (Retrieval-Augmented Generation)** - Combines vector search with LLM for context-aware responses
+- **MedGemma + FAISS Retrieval** - Combines vector search with Google's medical LLM for context-aware responses enriched with Turkish disease database records
 - **Vector Database** - FAISS index with ~1000 medical records
 - **gRPC** - Communication protocol for Zemberek service
 
