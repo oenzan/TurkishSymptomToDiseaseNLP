@@ -4,11 +4,10 @@
 ![Flask](https://img.shields.io/badge/Flask-3.x-black?style=for-the-badge&logo=flask&logoColor=white)
 ![HuggingFace](https://img.shields.io/badge/HuggingFace-MedGemma-yellow?style=for-the-badge&logo=huggingface&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![FAISS](https://img.shields.io/badge/FAISS-Vector_DB-orange?style=for-the-badge&logo=meta&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Zemberek-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-npm-339933?style=for-the-badge&logo=node.js&logoColor=white)
 
-A medical symptom analysis application powered by **Google MedGemma** via the HuggingFace Inference API, combined with a FAISS vector database for Turkish disease data retrieval. The system processes Turkish language symptoms using Zemberek NLP and provides medical recommendations.
+A medical symptom analysis application powered directly by **Google MedGemma** via the HuggingFace Inference API. The system processes Turkish language symptoms and provides medical recommendations entirely through the MedGemma medical AI model — no local vector database or retrieval step required.
 
 ## Screenshots and User Interface Guide
 
@@ -243,12 +242,6 @@ npm start
 .
 ├── backend/              # Backend application
 │   ├── config.yaml      # Backend configuration file
-│   ├── assets/          # Backend assets
-│   │   ├── stopwords.txt      # Turkish stopwords list
-│   │   └── symptoms.json      # Symptoms database
-│   ├── data/            # Backend data storage
-│   │   └── vector/      # Vector database storage
-│   │       └── disease_faiss.index  # FAISS index file
 │   └── src/             # Source code for MedGemma and web app
 │       ├── config_loader.py      # Configuration loader
 │       ├── medgemma.py           # MedGemma implementation with HuggingFace
@@ -283,10 +276,7 @@ npm start
 
 ### Backend
 - **Python 3.13.1** - Core programming language
-- **Google MedGemma 4B Instruct** (`google/medgemma-4b-it`) - Medical Large Language Model via HuggingFace Inference API for symptom analysis and response generation
-- **FAISS (Facebook AI Similarity Search)** - High-performance vector database for semantic similarity search over the Turkish disease database
-- **Sentence Transformers** - `intfloat/multilingual-e5-base` model for generating text embeddings
-- **Zemberek NLP** - Turkish language processing (lemmatization, morphological analysis)
+- **Google MedGemma 4B Instruct** (`google/medgemma-4b-it`) - Medical Large Language Model via HuggingFace Inference API for all symptom analysis and response generation
 - **Flask** - Web framework for REST API
 - **Docker** - Containerization for Zemberek gRPC service
 
@@ -300,13 +290,11 @@ npm start
 - **Pickle** - Metadata serialization
 
 ### Natural Language Processing
-- **Multilingual-E5-Base** - 768-dimensional sentence embeddings supporting 100+ languages including Turkish
-- **Snowball Stemmer** - Turkish text normalization
-- **Custom Hybrid Scoring** - 70% semantic similarity + 30% token overlap for retrieval optimization
+- **MedGemma** - Google's medical-domain LLM for symptom extraction, disease probability estimation, and clinical recommendations
 
 ### Architecture
-- **MedGemma + FAISS Retrieval** - Combines vector search with Google's medical LLM for context-aware responses enriched with Turkish disease database records
-- **Vector Database** - FAISS index with ~1000 medical records
+- **Direct MedGemma Inference** - Symptoms are analyzed directly by Google's MedGemma medical LLM; no retrieval or vector database step
+- **HuggingFace Inference API** - Cloud-based inference endpoint for MedGemma via `huggingface_hub.InferenceClient`
 - **gRPC** - Communication protocol for Zemberek service
 
 ---

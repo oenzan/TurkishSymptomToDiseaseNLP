@@ -29,7 +29,6 @@ function DoctorView({ patients }) {
   // If a patient is selected, show detail view
   if (selectedPatient) {
     let doctorInfo = selectedPatient.doctorInfo;
-    const docs = selectedPatient.retrievedDocs || [];
     
     // Handle case where doctorInfo might be a string (old data)
     if (typeof doctorInfo === 'string') {
@@ -56,7 +55,6 @@ function DoctorView({ patients }) {
     console.log('Doctor Info Keys:', doctorInfo ? Object.keys(doctorInfo) : 'null');
     console.log('Explanation:', doctorInfo?.explanation);
     console.log('Symptoms to ask:', doctorInfo?.symptoms_to_ask);
-    console.log('Retrieved Docs:', docs);
     console.log('========================');
     
     return (
@@ -70,15 +68,15 @@ function DoctorView({ patients }) {
             <h3>Hasta #{selectedPatient.id}</h3>
             <p><strong>Bölüm:</strong> {selectedPatient.department}</p>
             <p><strong>Kayıt:</strong> {new Date(selectedPatient.timestamp).toLocaleString('tr-TR')}</p>
-            {docs.length > 0 && (
+            {doctorInfo && doctorInfo.disease_probabilities && doctorInfo.disease_probabilities.length > 0 && (
               <>
                 <hr style={{margin: '12px 0', opacity: 0.2}} />
                 <p><strong>En Olası Tanı:</strong></p>
                 <p style={{color: 'var(--accent1)', fontSize: '15px', fontWeight: 600}}>
-                  {docs[0].Disease}
+                  {doctorInfo.disease_probabilities[0].disease}
                 </p>
                 <p style={{fontSize: '13px', color: 'var(--muted)'}}>
-                  Güven: {((docs[0].final_score || 0) * 100).toFixed(1)}%
+                  Güven: {((doctorInfo.disease_probabilities[0].probability || 0) * 100).toFixed(1)}%
                 </p>
               </>
             )}
@@ -205,21 +203,6 @@ function DoctorView({ patients }) {
             )}
 
 
-            {docs.length > 0 && (
-              <section className="detail-section">
-                <h2>📚 Eşleşen Hastalık Kayıtları (Top {Math.min(3, docs.length)})</h2>
-                {docs.slice(0, 3).map((doc, idx) => (
-                  <div key={idx} className="doc-card">
-                    <div className="doc-header">
-                      <h3>{String(doc.Disease || 'Bilinmeyen')}</h3>
-                      <span className="doc-score">Skor: {((doc.final_score || 0) * 100).toFixed(1)}%</span>
-                    </div>
-                    <p><strong>Bölüm:</strong> {String(doc.Department || 'Bilinmeyen')}</p>
-                    <p className="doc-text">{String(doc.text || 'Açıklama bulunamadı')}</p>
-                  </div>
-                ))}
-              </section>
-            )}
           </div>
         </main>
       </div>
