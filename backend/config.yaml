@@ -1,6 +1,6 @@
 models:
   embedding: "intfloat/multilingual-e5-base"
-  llm: "gpt-4o-mini"
+  llm: "google/medgemma-4b-it"
 
 paths:
   faiss_index: "data/vector/disease_faiss.index"

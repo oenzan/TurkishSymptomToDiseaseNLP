@@ -10,10 +10,10 @@ import json
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Load RAG module once at startup (not lazy)
-print("🚀 Loading RAG module at startup...")
-import rag_openai as rag
-print("✅ RAG module loaded successfully!")
+# Load MedGemma module once at startup (not lazy)
+print("🚀 Loading MedGemma module at startup...")
+import medgemma as rag
+print("✅ MedGemma module loaded successfully!")
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -65,7 +65,7 @@ def api_ask():
       })
     else:
       # Full pipeline with LLM
-      answer, docs, normalized_symptoms = rag.ask_gpt4(symptoms)
+      answer, docs, normalized_symptoms = rag.ask_medgemma(symptoms)
       print("="*20)
       print(f"Answer: {answer}")
       print(f"Docs: {docs}")
