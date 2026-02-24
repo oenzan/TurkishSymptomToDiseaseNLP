@@ -12,11 +12,11 @@ function PatientView({ onNavigateToDepartment }) {
   const [symptoms, setSymptoms] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [currentSymptoms, setCurrentSymptoms] = useState([]);
+  const [currentSymptoms, setCurrentSymptoms] = useState('');
   const [normalizedSymptomsList, setNormalizedSymptomsList] = useState([]);
+  const [currentAnswer, setCurrentAnswer] = useState(null);
   const [surveyMode, setSurveyMode] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [retrievedDocs, setRetrievedDocs] = useState([]);
   const [negativeCount, setNegativeCount] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
   const [askedSymptoms, setAskedSymptoms] = useState(new Set());
@@ -26,7 +26,7 @@ function PatientView({ onNavigateToDepartment }) {
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const loadingMessages = [
     'Semptomlarına uygun bölümü buluyoruz',
-    'Benzer kayıtları arıyoruz',
+    'MedGemma analiz yapıyor',
     'Seni en uygun bölüme yönlendireceğiz',
     'Kısa bir süre içinde sonuç gösterilecek'
   ];
@@ -40,52 +40,6 @@ function PatientView({ onNavigateToDepartment }) {
     return () => clearInterval(t);
   }, [loading]);
 
-  const getDoctorInfo = async (symptomsText) => {
-    try {
-      const res = await axios.post('/api/ask', { symptoms: symptomsText });
-      const answer = res.data.answer;
-      
-      console.log('LLM Raw Response:', answer);
-      console.log('Response type:', typeof answer);
-      
-      // If answer is already an object (parsed by backend), return it
-      if (answer && typeof answer === 'object') {
-        console.log('Answer is already an object:', answer);
-        return answer;
-      }
-      
-      // Try to parse JSON from LLM response if it's a string
-      if (answer && typeof answer === 'string') {
-        try {
-          // Try to parse the entire string first
-          const parsed = JSON.parse(answer);
-          console.log('Parsed entire response as JSON:', parsed);
-          return parsed;
-        } catch (e1) {
-          // If that fails, try to extract JSON from response
-          try {
-            const jsonMatch = answer.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              console.log('Extracted and parsed JSON from response:', parsed);
-              return parsed;
-            }
-          } catch (e2) {
-            console.warn('Could not parse LLM response as JSON:', e2);
-            console.log('Returning explanation as fallback');
-          }
-        }
-        // If we have a string but couldn't parse it, return as explanation
-        return { explanation: answer };
-      }
-      
-      return { explanation: answer || 'Analiz bilgisi alınamadı' };
-    } catch (e) {
-      console.error('Error getting doctor info:', e);
-      return { explanation: 'Hata oluştu: ' + e.message };
-    }
-  };
-
   const analyzeSymptoms = async (symptomsText) => {
     setLoading(true);
     setError(null);
@@ -93,55 +47,43 @@ function PatientView({ onNavigateToDepartment }) {
       const res = await axios.post('/api/ask', { symptoms: symptomsText });
       console.log('API response:', res.data);
       
-      const docs = res.data.retrieved_docs || [];
       const answer = res.data.answer || {};
       const normalized = res.data.normalized_symptoms || [];
       const shouldSkipQuestions = res.data.should_skip_questions || false;
       
-      setRetrievedDocs(docs);
-      
-      // Update normalized symptoms list
+      setCurrentAnswer(answer);
       setNormalizedSymptomsList(normalized);
 
-      // Check if no documents have final_score > 0.6
-      const hasRelevantSymptom = docs.some(d => d.final_score > 0.6);
-      if (!hasRelevantSymptom) {
+      // Check if MedGemma identified any departments (validates symptom input)
+      if (!answer.departments || answer.departments.length === 0) {
         setError('Herhangi bir hastalık semptomu girmediniz');
         return;
       }
 
-      // Check if backend says we should skip questions (high confidence)
-      // OR if the first doc has final_score > 0.7 and others are < 0.7
-      if (shouldSkipQuestions || (docs.length > 0 && docs[0].final_score > 0.7 && docs.slice(1).every(d => d.final_score < 0.7))) {
-        // Navigate to department with doctor info
+      // If high confidence, navigate directly to department
+      if (shouldSkipQuestions) {
         const normalizedText = normalized.join(', ');
-        const doctorInfo = await getDoctorInfo(symptomsText);
-        onNavigateToDepartment(docs[0].Department, normalizedText, doctorInfo, docs);
+        onNavigateToDepartment(answer.departments[0], normalizedText, answer, []);
         return;
       }
 
-      // If we reach here, we need to ask survey questions
-      // Use LLM-provided symptoms_to_ask and store normalized form
-      // Deduplicate the symptoms list using normalized comparison
+      // Start survey with MedGemma-generated symptoms_to_ask
       const rawSymptomsToAsk = answer.symptoms_to_ask || [];
       const symptomsToAsk = [];
       const seenNormalized = new Set();
       
       for (const symptom of rawSymptomsToAsk) {
-        const normalized = normalizeSymptom(symptom);
-        if (!seenNormalized.has(normalized)) {
-          seenNormalized.add(normalized);
+        const norm = normalizeSymptom(symptom);
+        if (!seenNormalized.has(norm)) {
+          seenNormalized.add(norm);
           symptomsToAsk.push(symptom);
         }
       }
       
-      console.log('Raw symptoms from LLM:', rawSymptomsToAsk);
-      console.log('Deduplicated symptoms:', symptomsToAsk);
-      console.log('Should skip questions:', shouldSkipQuestions);
-      
+      console.log('Symptoms to ask:', symptomsToAsk);
       setAvailableSymptomsToAsk(symptomsToAsk);
       const normalizedText = normalized.join(', ');
-      startSurvey(docs, normalizedText, symptomsToAsk);
+      startSurvey(answer, normalizedText, symptomsToAsk);
     } catch (e) {
       console.error('API error', e);
       setError(e.message || 'API error');
@@ -150,23 +92,19 @@ function PatientView({ onNavigateToDepartment }) {
     }
   };
 
-  const startSurvey = async (docs, symptomsText, symptomsToAsk) => {
-    // Check if we've already asked 4 questions
+  const startSurvey = (answer, symptomsText, symptomsToAsk) => {
     if (questionCount >= 4) {
-      // Stop asking questions, navigate to top department
-      if (docs.length > 0) {
-        const doctorInfo = await getDoctorInfo(symptomsText);
-        onNavigateToDepartment(docs[0].Department, symptomsText, doctorInfo, docs);
+      if (answer.departments && answer.departments.length > 0) {
+        onNavigateToDepartment(answer.departments[0], symptomsText, answer, []);
       }
       return;
     }
     
-    // Use LLM-provided symptoms, filter out already asked ones AND patient's current symptoms
     const currentSymptomsNormalized = normalizedSymptomsList.map(s => normalizeSymptom(s));
     const availableSymptoms = symptomsToAsk.filter(s => {
-      const normalized = normalizeSymptom(s);
-      const alreadyAsked = Array.from(askedSymptoms).some(asked => normalizeSymptom(asked) === normalized);
-      const alreadyHas = currentSymptomsNormalized.some(current => current === normalized);
+      const norm = normalizeSymptom(s);
+      const alreadyAsked = Array.from(askedSymptoms).some(asked => normalizeSymptom(asked) === norm);
+      const alreadyHas = currentSymptomsNormalized.some(current => current === norm);
       return !alreadyAsked && !alreadyHas;
     });
     
@@ -175,10 +113,8 @@ function PatientView({ onNavigateToDepartment }) {
       setCurrentQuestion(availableSymptoms[0]);
       setCurrentSymptoms(symptomsText);
     } else {
-      // No additional symptoms to ask, navigate to top department
-      if (docs.length > 0) {
-        const doctorInfo = await getDoctorInfo(symptomsText);
-        onNavigateToDepartment(docs[0].Department, symptomsText, doctorInfo, docs);
+      if (answer.departments && answer.departments.length > 0) {
+        onNavigateToDepartment(answer.departments[0], symptomsText, answer, []);
       }
     }
   };
@@ -195,51 +131,33 @@ function PatientView({ onNavigateToDepartment }) {
     const updatedAskedSymptoms = new Set([...askedSymptoms, currentQuestion]);
     setAskedSymptoms(updatedAskedSymptoms);
     
-    console.log('Survey answer:', hasSymptom ? 'YES' : 'NO');
-    console.log('Question asked:', currentQuestion);
-    console.log('All asked symptoms:', Array.from(updatedAskedSymptoms));
-    
     const newQuestionCount = questionCount + 1;
     setQuestionCount(newQuestionCount);
     
     if (hasSymptom) {
-      // Add symptom and re-check with RAG only (no LLM call)
+      // Add symptom and re-analyze with MedGemma
       const newSymptoms = currentSymptoms + ', ' + currentQuestion;
-      // Don't hide survey yet - keep it visible to prevent blinking
-      // setCurrentQuestion(null);
-      // setSurveyMode(false);
       setNegativeCount(0);
       
       try {
-        // Only call RAG to check scores, skip LLM
-        const res = await axios.post('/api/ask', { 
-          symptoms: newSymptoms,
-          skip_llm: true 
-        });
+        const res = await axios.post('/api/ask', { symptoms: newSymptoms });
         
-        const docs = res.data.retrieved_docs || [];
+        const answer = res.data.answer || {};
         const normalized = res.data.normalized_symptoms || [];
-        setRetrievedDocs(docs);
+        const shouldSkipQuestions = res.data.should_skip_questions || false;
+        setCurrentAnswer(answer);
         setNormalizedSymptomsList(normalized);
         
-        // Check if we now have a confident match
-        if (docs.length > 0) {
-          const topScore = docs[0].final_score;
-          const othersLow = docs.slice(1).every(d => d.final_score < 0.7);
-          
-          if (topScore > 0.7 && othersLow) {
-            // Navigate to department with doctor info
-            const normalizedText = normalized.join(', ');
-            setSurveyMode(false); // Hide survey only when navigating
-            setLoading(true); // Only show loading when navigating
-            const doctorInfo = await getDoctorInfo(newSymptoms);
-            setIsProcessingAnswer(false);
-            onNavigateToDepartment(docs[0].Department, normalizedText, doctorInfo, docs);
-            return;
-          }
+        if (shouldSkipQuestions || newQuestionCount >= 4) {
+          const normalizedText = normalized.join(', ');
+          setSurveyMode(false);
+          setLoading(true);
+          setIsProcessingAnswer(false);
+          onNavigateToDepartment(answer.departments[0], normalizedText, answer, []);
+          return;
         }
         
-        // No confident match yet, continue with existing symptoms list
+        // Continue survey
         const normalizedText = normalized.join(', ');
         const currentSymptomsNormalized = normalized.map(s => normalizeSymptom(s));
         const availableSymptoms = availableSymptomsToAsk.filter(s => {
@@ -250,18 +168,15 @@ function PatientView({ onNavigateToDepartment }) {
         });
         
         if (availableSymptoms.length > 0 && newQuestionCount < 4) {
-          // Continue survey with next question - survey stays visible
           setCurrentQuestion(availableSymptoms[0]);
           setCurrentSymptoms(normalizedText);
           setIsProcessingAnswer(false);
         } else {
-          // No more questions or reached limit, navigate to top department
-          if (docs.length > 0) {
-            setSurveyMode(false); // Hide survey only when navigating
-            setLoading(true); // Show loading only when navigating
-            const doctorInfo = await getDoctorInfo(newSymptoms);
+          if (answer.departments && answer.departments.length > 0) {
+            setSurveyMode(false);
+            setLoading(true);
             setIsProcessingAnswer(false);
-            onNavigateToDepartment(docs[0].Department, normalizedText, doctorInfo, docs);
+            onNavigateToDepartment(answer.departments[0], normalizedText, answer, []);
           }
         }
       } catch (e) {
@@ -269,7 +184,6 @@ function PatientView({ onNavigateToDepartment }) {
         setError(e.message || 'API error');
         setIsProcessingAnswer(false);
       }
-      // No finally block needed - loading is only set when navigating
     } else {
       // Increment negative count
       const newNegativeCount = negativeCount + 1;
@@ -277,12 +191,10 @@ function PatientView({ onNavigateToDepartment }) {
 
       if (newNegativeCount >= 3) {
         // Navigate to top department after 3 negatives
-        if (retrievedDocs.length > 0) {
+        if (currentAnswer && currentAnswer.departments && currentAnswer.departments.length > 0) {
           setLoading(true);
-          const doctorInfo = await getDoctorInfo(currentSymptoms);
-          setLoading(false);
           setIsProcessingAnswer(false);
-          onNavigateToDepartment(retrievedDocs[0].Department, currentSymptoms, doctorInfo, retrievedDocs);
+          onNavigateToDepartment(currentAnswer.departments[0], currentSymptoms, currentAnswer, []);
         }
         return;
       }
@@ -290,27 +202,21 @@ function PatientView({ onNavigateToDepartment }) {
       // Ask next question from existing list (no API call needed)
       const currentSymptomsNormalized = normalizedSymptomsList.map(s => normalizeSymptom(s));
       const availableSymptoms = availableSymptomsToAsk.filter(s => {
-        const normalized = normalizeSymptom(s);
-        const alreadyAsked = Array.from(updatedAskedSymptoms).some(asked => normalizeSymptom(asked) === normalized);
-        const alreadyHas = currentSymptomsNormalized.some(current => current === normalized);
+        const norm = normalizeSymptom(s);
+        const alreadyAsked = Array.from(updatedAskedSymptoms).some(asked => normalizeSymptom(asked) === norm);
+        const alreadyHas = currentSymptomsNormalized.some(current => current === norm);
         return !alreadyAsked && !alreadyHas;
       });
-      
-      console.log('Available symptoms to ask:', availableSymptoms);
-      console.log('Already asked (normalized):', Array.from(updatedAskedSymptoms).map(s => normalizeSymptom(s)));
-      console.log('Patient already has (normalized):', currentSymptomsNormalized);
       
       if (availableSymptoms.length > 0 && newQuestionCount < 4) {
         setCurrentQuestion(availableSymptoms[0]);
         setIsProcessingAnswer(false);
       } else {
         // No more questions or reached limit, navigate to top department
-        if (retrievedDocs.length > 0) {
+        if (currentAnswer && currentAnswer.departments && currentAnswer.departments.length > 0) {
           setLoading(true);
-          const doctorInfo = await getDoctorInfo(currentSymptoms);
-          setLoading(false);
           setIsProcessingAnswer(false);
-          onNavigateToDepartment(retrievedDocs[0].Department, currentSymptoms, doctorInfo, retrievedDocs);
+          onNavigateToDepartment(currentAnswer.departments[0], currentSymptoms, currentAnswer, []);
         }
       }
     }
@@ -323,6 +229,7 @@ function PatientView({ onNavigateToDepartment }) {
     setAskedSymptoms(new Set());
     setNormalizedSymptomsList([]);
     setAvailableSymptomsToAsk([]);
+    setCurrentAnswer(null);
     analyzeSymptoms(symptoms);
   };
 
@@ -442,3 +349,4 @@ function PatientView({ onNavigateToDepartment }) {
 }
 
 export default PatientView;
+

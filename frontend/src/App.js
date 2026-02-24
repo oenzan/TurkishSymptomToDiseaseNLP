@@ -46,7 +46,7 @@ function App() {
         <div className="container role-selection">
           <div className="role-selection-inner">
             <img src={Logo} alt="logo" className="logo-large" />
-            <h1>🩺 RAG Tıbbi Asistan Sistemi</h1>
+            <h1>🩺 MedGemma Tıbbi Asistan Sistemi</h1>
             <p className="subtitle">Lütfen rolünüzü seçiniz</p>
             
             <div className="role-cards">

@@ -4,10 +4,6 @@ flask-cors==6.0.1
 
 # AI/ML Core Libraries
 huggingface_hub>=0.27.0
-sentence-transformers==5.1.2
-
-# Vector Database
-faiss-cpu==1.12.0
 
 # LangChain Ecosystem (for langchain_test.py helper script)
 langchain-huggingface==1.0.0
